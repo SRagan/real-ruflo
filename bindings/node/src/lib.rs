@@ -73,6 +73,21 @@ impl Memory {
         Ok(serde_json::to_value(stats).unwrap_or(serde_json::Value::Null))
     }
 
+    /// List the most-recently-accessed entries, optionally filtered to a
+    /// namespace. Used by the SessionStart hook to surface recent context.
+    #[napi]
+    pub fn recent(
+        &self,
+        namespace: Option<String>,
+        limit: Option<u32>,
+    ) -> Result<serde_json::Value> {
+        let entries = self
+            .inner
+            .recent(namespace.as_deref(), limit.unwrap_or(10) as usize)
+            .map_err(to_napi)?;
+        Ok(serde_json::to_value(entries).unwrap_or(serde_json::Value::Null))
+    }
+
     #[napi]
     pub fn search(&self, args: SearchArgs) -> Result<serde_json::Value> {
         let mode = match args.mode.as_deref() {

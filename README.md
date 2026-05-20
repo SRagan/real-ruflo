@@ -19,7 +19,7 @@ Anything that can't pass a benchmark in `bench/` doesn't ship.
 
 ## Status
 
-**Pre-alpha — slice 1 (memory) core functionality landed.**
+**Pre-alpha — slice 1 (memory) done; slice 2 (hooks) in flight.**
 
 | Subsystem      | Status                                              |
 |----------------|-----------------------------------------------------|
@@ -27,11 +27,14 @@ Anything that can't pass a benchmark in `bench/` doesn't ship.
 | Vector search  | working — brute-force cosine, BYO embeddings        |
 | Lexical search | working — FTS5 with BM25                            |
 | Hybrid search  | working — Reciprocal Rank Fusion, default mode      |
-| NAPI bindings  | working — `Memory` class, 5 methods                 |
+| Recent listing | working — list most-recently-accessed by namespace  |
+| NAPI bindings  | working — `Memory` class, 6 methods                 |
 | MCP server     | working — stdio, 4 tools registered                 |
-| Tests          | 9 unit tests passing in `crates/memory`             |
+| Hooks (SessionStart) | working — auto-injects project memories on session boot |
+| Hook installer | working — idempotent, project- or user-scoped       |
+| Tests          | 14 unit tests passing in `crates/memory`            |
+| CI             | working — GitHub Actions on Ubuntu/Windows/macOS    |
 | Benchmarks     | TODO — see `bench/README.md`                        |
-| CI             | TODO                                                |
 
 ## Design principles
 
@@ -79,6 +82,19 @@ Then in a session:
 - `memory.store` — write
 - `memory.search` — query with `mode` of `vector` / `lexical` / `hybrid`
 - `memory.delete` / `memory.stats` — housekeeping
+
+### Install hooks (optional, for automatic session context)
+
+```bash
+cd bindings/node
+node hooks/install.js --scope project    # per-project hooks
+# or --scope user for global hooks
+```
+
+This registers a `SessionStart` hook that injects the top 5 recent memories
+for the current project's namespace into Claude Code at boot — no explicit
+`memory.search` call needed. See `bindings/node/hooks/README.md` for details
+and configuration knobs.
 
 ## Architecture
 

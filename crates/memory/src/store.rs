@@ -149,6 +149,32 @@ impl MemoryStore {
         Ok(rows > 0)
     }
 
+    /// List the most-recently-accessed entries, optionally filtered to one
+    /// namespace. Useful for "show me what I last looked at" UX such as
+    /// the SessionStart hook — no query, no embedding required.
+    pub fn recent(&self, namespace: Option<&str>, limit: usize) -> Result<Vec<Entry>> {
+        let sql = if namespace.is_some() {
+            "SELECT id, namespace, key, value, tags, created_at, accessed_at,
+                    access_count, embed_dim
+             FROM entries WHERE namespace = ?1
+             ORDER BY accessed_at DESC LIMIT ?2"
+        } else {
+            "SELECT id, namespace, key, value, tags, created_at, accessed_at,
+                    access_count, embed_dim
+             FROM entries
+             ORDER BY accessed_at DESC LIMIT ?1"
+        };
+        let mut stmt = self.conn.prepare(sql)?;
+        let rows: rusqlite::Result<Vec<Entry>> = if let Some(ns) = namespace {
+            stmt.query_map(params![ns, limit as i64], row_to_entry)?
+                .collect()
+        } else {
+            stmt.query_map(params![limit as i64], row_to_entry)?
+                .collect()
+        };
+        Ok(rows?)
+    }
+
     pub fn stats(&self) -> Result<MemoryStats> {
         let total: i64 = self
             .conn
@@ -398,6 +424,40 @@ mod tests {
             serde_json::json!("second")
         );
         assert_eq!(store.stats().unwrap().total_entries, 1);
+    }
+
+    #[test]
+    fn recent_returns_in_accessed_order() {
+        let (_d, store) = open();
+        store
+            .store(&req("p", "old", serde_json::json!("old")))
+            .unwrap();
+        store
+            .store(&req("p", "newer", serde_json::json!("newer")))
+            .unwrap();
+        store
+            .store(&req("p", "newest", serde_json::json!("newest")))
+            .unwrap();
+        // Touch "old" so it becomes most-recently-accessed.
+        let _ = store.get("p", "old").unwrap();
+
+        let entries = store.recent(Some("p"), 10).unwrap();
+        assert_eq!(entries.len(), 3);
+        assert_eq!(entries[0].key, "old");
+    }
+
+    #[test]
+    fn recent_respects_namespace_filter() {
+        let (_d, store) = open();
+        store.store(&req("a", "k", serde_json::json!(1))).unwrap();
+        store.store(&req("b", "k", serde_json::json!(2))).unwrap();
+
+        let only_a = store.recent(Some("a"), 10).unwrap();
+        assert_eq!(only_a.len(), 1);
+        assert_eq!(only_a[0].namespace, "a");
+
+        let all = store.recent(None, 10).unwrap();
+        assert_eq!(all.len(), 2);
     }
 
     #[test]

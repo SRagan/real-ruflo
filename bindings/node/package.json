@@ -6,12 +6,15 @@
   "main": "index.js",
   "types": "index.d.ts",
   "bin": {
-    "real-ruflo-mcp": "./server/index.js"
+    "real-ruflo-mcp": "./server/index.js",
+    "real-ruflo-hooks": "./hooks/handler.js",
+    "real-ruflo-hooks-install": "./hooks/install.js"
   },
   "files": [
     "index.js",
     "index.d.ts",
     "server/",
+    "hooks/",
     "*.node"
   ],
   "scripts": {

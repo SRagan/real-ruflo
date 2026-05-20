@@ -33,25 +33,34 @@ honest performance numbers, four tools, maximally flexible.
 
 ---
 
-## Slice 2 — Hooks
+## Slice 2 — Hooks (IN FLIGHT — SessionStart landed)
 
 **Goal:** Port Ruflo's hook handler honestly. Keep the lifecycle ones that
 actually fire and do work. Drop the marketing-tier hooks.
 
-### Scope
+### Status
 
-- Hook registration via Claude Code's `settings.json`
-- Cross-platform installer (Windows `cmd /c IF EXIST`, mac/linux shell)
-- Hooks: `pre-edit`, `post-edit`, `pre-command`, `post-command`,
-  `pre-task`, `post-task`, `session-start`, `session-end`
-- Each hook writes context into the memory subsystem from slice 1
-- Defensive: 5s timeout, always-exit-0, suppress-stdout
+- [x] `SessionStart` hook — injects N most-recent memories for the current
+  project's namespace as session context via Claude Code's
+  `hookSpecificOutput.additionalContext` protocol
+- [x] Cross-platform hook handler (Node, defensive: always exits 0, 4.5s soft
+  timeout, errors to stderr only)
+- [x] Idempotent installer with `--scope project|user` and `--dry-run`
+- [x] Memory store `recent(namespace, limit)` API — listed without search
+- [x] Per-project namespace derived from `<basename>-<sha256[:6]>` of the
+  project directory (with `REAL_RUFLO_NAMESPACE` override)
+- [x] 2 new unit tests in `crates/memory` (recent ordering + namespace filter)
+- [x] End-to-end smoke test through Node verified
+- [ ] `Stop` / session-end hook — consolidate notable events from the session
+- [ ] `PreToolUse` / `PostToolUse` hooks — log destructive command warnings,
+  capture tool outcomes for future search
+- [ ] `bench/hooks` measuring per-hook cold-start overhead (target: <200ms p99)
 
 ### Done when
 
-- `real-ruflo hooks install` makes every hook fire correctly on Windows
-- Integration test exercises a full edit-task-session lifecycle
-- `bench/hooks` measures per-hook overhead (target: <10ms p99)
+- All listed hooks implemented or explicitly deferred to a later slice
+- `bench/hooks` produces measured numbers
+- Integration test exercises a full session lifecycle through Claude Code
 
 ---
 
