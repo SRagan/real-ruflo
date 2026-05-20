@@ -64,26 +64,38 @@ actually fire and do work. Drop the marketing-tier hooks.
 
 ---
 
-## Slice 3 — Orchestrate (the lead-orchestrated phase runner)
+## Slice 3 — Orchestrate (IN FLIGHT — core landed)
 
 **Goal:** Turn Ruflo's "memory-as-bus, lead-orchestrated phases" workaround
 manual into a first-class declarative API.
 
-### Scope
+### Status
 
-- `phases.yaml` declares each phase: agent type, input memory keys,
-  output memory keys, blocking dependencies, parallel siblings
-- Runner spawns Claude Code agents in correct order, verifies memory writes,
-  gates next phase
-- Built-in degraded-mode brief generator — every spawned agent gets the
-  paragraph telling it what to do if coordination tools are missing
-- Honest about subagent limits: no SendMessage-based patterns; pure memory-bus
+- [x] `phases.yaml` schema: per-phase agent + inputs + outputs + dependencies,
+  with parallel groups, output hints, optional descriptions
+- [x] YAML parser with full validation: unique phase IDs, blockedBy must exist,
+  no self-loops, no cycles (Kahn topological sort), no duplicate output keys
+- [x] Phase status derivation from memory: done / partial / ready / blocked
+  states computed from which output keys exist in the workflow's namespace
+- [x] Markdown brief generator with current input-value previews, sibling
+  warnings for parallel agents, output hints, and the verbatim degraded-mode
+  paragraph (the load-bearing reality check about subagent limits)
+- [x] NAPI bindings: `Orchestrator` class with `validate` / `status` / `brief`
+- [x] MCP tools registered: `orchestrate.validate`, `orchestrate.status`,
+  `orchestrate.brief`
+- [x] Example workflow at `examples/phases-codebase-audit.yaml`
+- [x] 13 unit tests in `crates/orchestrate` (schema validation, state
+  derivation, brief generation)
+- [x] End-to-end smoke test through NAPI verified (parse → status → seed
+  memory → re-status → generate brief with live values)
+- [ ] `orchestrate.next` — return ALL ready briefs at once for convenience
+- [ ] `bench/orchestrate_*.rs` — measure parse + status + brief overhead
 
 ### Done when
 
-- A real multi-phase example (e.g., research + code + test) runs end-to-end
-- Failures in any phase are caught and surfaced, not silently skipped
-- `bench/orchestrate` measures phase transition overhead
+- All listed boxes above are green
+- A real workflow runs end-to-end with lead spawning subagents based on
+  generated briefs and advancing via memory verification
 
 ---
 

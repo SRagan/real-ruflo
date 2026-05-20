@@ -1,0 +1,19 @@
+[package]
+name = "real-ruflo-orchestrate"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "Declarative phase runner for lead-orchestrated multi-agent workflows."
+
+[dependencies]
+real-ruflo-memory = { path = "../memory" }
+serde.workspace = true
+serde_json.workspace = true
+serde_yml = "0.0.12"
+thiserror.workspace = true
+
+[dev-dependencies]
+tempfile = "3"

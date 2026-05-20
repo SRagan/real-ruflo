@@ -1,0 +1,55 @@
+# Example workflow: a codebase audit followed by a design + implementation pass.
+#
+# Phases run in dependency order; agents inside a `parallel:` block run
+# concurrently. The lead Claude Code session uses `orchestrate.status` to
+# see what's ready, `orchestrate.brief` to generate each agent's brief, and
+# verifies completion by re-reading memory.
+#
+# Memory namespace is shared across all phases of the workflow — that's how
+# downstream phases pick up upstream outputs.
+
+name: codebase-audit
+namespace: example-codebase-audit
+description: >
+  Two-phase research + design audit. Phase 1 fans out into independent
+  parallel research streams; phase 2 synthesizes their outputs into a
+  proposal.
+
+phases:
+  - id: research
+    description: Independent parallel discovery — no inter-agent messaging.
+    parallel:
+      - agent: researcher
+        description: >
+          Walk the docs and write a one-paragraph summary per top-level area.
+        outputs:
+          - key: research.areas
+            hint: JSON list of { area, summary } objects, one per area found.
+
+      - agent: code-reader
+        description: >
+          Inventory the source tree; produce a file-level map.
+        outputs:
+          - key: research.inventory
+            hint: JSON list of { path, lines, language, role } objects.
+
+      - agent: dependency-mapper
+        description: >
+          Map the dependency graph between source modules.
+        outputs:
+          - key: research.dependencies
+            hint: JSON adjacency list of module → [imported_modules].
+
+  - id: design
+    description: Architect reads all research outputs and proposes changes.
+    blockedBy: [research]
+    agent: architect
+    inputs:
+      - research.areas
+      - research.inventory
+      - research.dependencies
+    outputs:
+      - key: design.proposal
+        hint: >
+          Markdown document with: (1) what's good, (2) what's broken,
+          (3) recommended changes in priority order, (4) why each.

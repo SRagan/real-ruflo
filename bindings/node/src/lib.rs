@@ -115,3 +115,66 @@ fn to_f32(v: Vec<f64>) -> Vec<f32> {
 fn to_napi(e: real_ruflo_memory::MemoryError) -> Error {
     Error::new(Status::GenericFailure, e.to_string())
 }
+
+// ---------------------------------------------------------------------------
+// Orchestrate bindings
+// ---------------------------------------------------------------------------
+
+use real_ruflo_orchestrate as orch;
+
+#[napi]
+pub struct Orchestrator {
+    memory: MemoryStore,
+}
+
+#[napi]
+impl Orchestrator {
+    #[napi(constructor)]
+    pub fn new(db_path: Option<String>) -> Result<Self> {
+        let path: std::path::PathBuf = db_path
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(default_db_path);
+        let memory = MemoryStore::open(&path).map_err(to_napi)?;
+        Ok(Self { memory })
+    }
+
+    /// Validate a workflow file. Returns the parsed workflow as JSON.
+    #[napi]
+    pub fn validate(&self, workflow_path: String) -> Result<serde_json::Value> {
+        let wf =
+            orch::load_workflow_file(std::path::Path::new(&workflow_path)).map_err(orch_to_napi)?;
+        Ok(serde_json::to_value(wf).unwrap_or(serde_json::Value::Null))
+    }
+
+    /// Compute the current status of every phase from the live memory state.
+    #[napi]
+    pub fn status(&self, workflow_path: String) -> Result<serde_json::Value> {
+        let wf =
+            orch::load_workflow_file(std::path::Path::new(&workflow_path)).map_err(orch_to_napi)?;
+        let s = orch::workflow_status(&wf, &self.memory).map_err(orch_to_napi)?;
+        Ok(serde_json::to_value(s).unwrap_or(serde_json::Value::Null))
+    }
+
+    /// Generate a markdown brief for a specific agent in a specific phase.
+    #[napi]
+    pub fn brief(
+        &self,
+        workflow_path: String,
+        phase_id: String,
+        agent_index: Option<u32>,
+    ) -> Result<String> {
+        let wf =
+            orch::load_workflow_file(std::path::Path::new(&workflow_path)).map_err(orch_to_napi)?;
+        orch::generate_brief(
+            &wf,
+            &phase_id,
+            agent_index.unwrap_or(0) as usize,
+            &self.memory,
+        )
+        .map_err(orch_to_napi)
+    }
+}
+
+fn orch_to_napi(e: orch::OrchestrateError) -> Error {
+    Error::new(Status::GenericFailure, e.to_string())
+}

@@ -14,9 +14,10 @@ const {
   ListToolsRequestSchema,
 } = require("@modelcontextprotocol/sdk/types.js");
 
-const { Memory } = require("../index.js");
+const { Memory, Orchestrator } = require("../index.js");
 
 const memory = new Memory(process.env.REAL_RUFLO_DB || null);
+const orchestrator = new Orchestrator(process.env.REAL_RUFLO_DB || null);
 
 const tools = [
   {
@@ -73,6 +74,54 @@ const tools = [
       "Get counts: total_entries, namespaces, entries_with_embeddings.",
     inputSchema: { type: "object", properties: {} },
   },
+  {
+    name: "orchestrate.validate",
+    description:
+      "Validate a phases.yaml workflow file (DAG, unique IDs, no cycles, " +
+      "no duplicate output keys). Returns the parsed workflow.",
+    inputSchema: {
+      type: "object",
+      required: ["workflow_path"],
+      properties: {
+        workflow_path: { type: "string" },
+      },
+    },
+  },
+  {
+    name: "orchestrate.status",
+    description:
+      "Show the current state of every phase in a workflow, derived from " +
+      "what's currently in the memory namespace. Each phase is " +
+      "done/partial/ready/blocked.",
+    inputSchema: {
+      type: "object",
+      required: ["workflow_path"],
+      properties: {
+        workflow_path: { type: "string" },
+      },
+    },
+  },
+  {
+    name: "orchestrate.brief",
+    description:
+      "Generate a markdown brief for spawning a specific agent in a " +
+      "specific phase. Includes input memory keys (with current value " +
+      "previews), output memory keys to write, sibling-warning if " +
+      "parallel, and the verbatim degraded-mode paragraph.",
+    inputSchema: {
+      type: "object",
+      required: ["workflow_path", "phase_id"],
+      properties: {
+        workflow_path: { type: "string" },
+        phase_id: { type: "string" },
+        agent_index: {
+          type: "integer",
+          minimum: 0,
+          description: "0-based index into the phase's agents list (default 0)",
+        },
+      },
+    },
+  },
 ];
 
 const server = new Server(
@@ -113,6 +162,21 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
 
       case "memory.stats":
         return content(memory.stats());
+
+      case "orchestrate.validate":
+        return content(orchestrator.validate(args.workflow_path));
+
+      case "orchestrate.status":
+        return content(orchestrator.status(args.workflow_path));
+
+      case "orchestrate.brief":
+        return content(
+          orchestrator.brief(
+            args.workflow_path,
+            args.phase_id,
+            args.agent_index != null ? Number(args.agent_index) : null
+          )
+        );
 
       default:
         throw new Error(`Unknown tool: ${name}`);

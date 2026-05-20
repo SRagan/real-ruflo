@@ -13,6 +13,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 real-ruflo-memory = { path = "../../crates/memory" }
+real-ruflo-orchestrate = { path = "../../crates/orchestrate" }
 napi.workspace = true
 napi-derive.workspace = true
 serde.workspace = true

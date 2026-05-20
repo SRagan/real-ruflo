@@ -28,11 +28,12 @@ Anything that can't pass a benchmark in `bench/` doesn't ship.
 | Lexical search | working — FTS5 with BM25                            |
 | Hybrid search  | working — Reciprocal Rank Fusion, default mode      |
 | Recent listing | working — list most-recently-accessed by namespace  |
-| NAPI bindings  | working — `Memory` class, 6 methods                 |
-| MCP server     | working — stdio, 4 tools registered                 |
+| Orchestrate    | working — YAML workflows, status, brief generator   |
+| NAPI bindings  | working — `Memory` + `Orchestrator` classes         |
+| MCP server     | working — stdio, **7 tools** registered             |
 | Hooks (SessionStart) | working — auto-injects project memories on session boot |
 | Hook installer | working — idempotent, project- or user-scoped       |
-| Tests          | 14 unit tests passing in `crates/memory`            |
+| Tests          | **27 unit tests passing** (14 memory + 13 orchestrate) |
 | CI             | working — GitHub Actions on Ubuntu/Windows/macOS    |
 | Benchmarks     | TODO — see `bench/README.md`                        |
 
@@ -78,10 +79,20 @@ Add to your `.mcp.json` (or `~/.claude.json`):
 }
 ```
 
-Then in a session:
+Then in a session, the following MCP tools are available:
+
+**Memory:**
 - `memory.store` — write
 - `memory.search` — query with `mode` of `vector` / `lexical` / `hybrid`
 - `memory.delete` / `memory.stats` — housekeeping
+
+**Orchestrate** (multi-agent workflow runner):
+- `orchestrate.validate` — load + validate a `phases.yaml` file
+- `orchestrate.status` — see which phases are done / ready / blocked
+- `orchestrate.brief` — generate the markdown brief for spawning each agent
+  (includes current input values + the degraded-mode paragraph)
+
+See `examples/phases-codebase-audit.yaml` for a working workflow definition.
 
 ### Install hooks (optional, for automatic session context)
 
