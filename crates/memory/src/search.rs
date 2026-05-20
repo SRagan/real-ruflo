@@ -72,10 +72,25 @@ mod tests {
 
     #[test]
     fn rrf_combines_two_rankings() {
-        let a = vec![1i64, 2, 3];
-        let b = vec![3i64, 2, 1];
+        // id 10 is top in both lists → must be the top result.
+        let a = vec![10i64, 20, 30];
+        let b = vec![10i64, 30, 20];
         let fused = rrf(&[&a, &b], 60.0);
-        // id 2 appears at rank 1 in both → should win
-        assert_eq!(fused[0].0, 2);
+        assert_eq!(fused[0].0, 10);
+        // All three ids must appear in the fused output.
+        let ids: std::collections::HashSet<i64> = fused.iter().map(|(id, _)| *id).collect();
+        assert!(ids.contains(&10));
+        assert!(ids.contains(&20));
+        assert!(ids.contains(&30));
+    }
+
+    #[test]
+    fn rrf_score_is_higher_for_better_ranks() {
+        // Single list: rank 0 must outscore rank 2.
+        let only = vec![100i64, 200, 300];
+        let fused = rrf(&[&only], 60.0);
+        // fused is sorted by score desc, so first should be id 100.
+        assert_eq!(fused[0].0, 100);
+        assert!(fused[0].1 > fused[2].1);
     }
 }

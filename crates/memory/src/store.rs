@@ -204,10 +204,10 @@ impl MemoryStore {
     fn vector_search(&self, req: &SearchRequest, query: &[f32]) -> Result<Vec<SearchHit>> {
         let (where_sql, bind) = filters(req);
         let sql = format!(
-            "SELECT id, namespace, key, value, tags, created_at, accessed_at,
-                    access_count, embed_dim, embedding
-             FROM entries
-             WHERE embedding IS NOT NULL {where_sql}"
+            "SELECT e.id, e.namespace, e.key, e.value, e.tags, e.created_at, e.accessed_at,
+                    e.access_count, e.embed_dim, e.embedding
+             FROM entries e
+             WHERE e.embedding IS NOT NULL {where_sql}"
         );
         let mut stmt = self.conn.prepare(&sql)?;
         let rows = stmt.query_map(params_from_iter(bind.iter()), |row| {
@@ -296,15 +296,13 @@ fn filters(req: &SearchRequest) -> (String, Vec<DynParam>) {
     let mut bind: Vec<DynParam> = Vec::new();
 
     if let Some(ns) = &req.namespace {
-        where_sql.push_str(&format!(" AND namespace = ?{}", bind.len() + 1));
+        where_sql.push_str(&format!(" AND e.namespace = ?{}", bind.len() + 1));
         bind.push(Box::new(ns.clone()));
     }
     // Tag filter: each tag must appear in the stored JSON tags array.
-    // We use a substring match on the JSON, which is safe because tags
-    // round-trip through serde_json (quoted strings).
+    // We match the JSON substring `"tag"` to avoid prefix collisions.
     for tag in &req.tags {
-        where_sql.push_str(&format!(" AND tags LIKE ?{}", bind.len() + 1));
-        // Match `"tag"` to avoid prefix collisions.
+        where_sql.push_str(&format!(" AND e.tags LIKE ?{}", bind.len() + 1));
         bind.push(Box::new(format!("%\"{}\"%", tag.replace('%', "\\%"))));
     }
     (where_sql, bind)
