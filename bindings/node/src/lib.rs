@@ -8,9 +8,7 @@ use std::path::PathBuf;
 
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
-use real_ruflo_memory::{
-    default_db_path, MemoryStore, SearchMode, SearchRequest, StoreRequest,
-};
+use real_ruflo_memory::{default_db_path, MemoryStore, SearchMode, SearchRequest, StoreRequest};
 
 #[napi(object)]
 pub struct StoreArgs {

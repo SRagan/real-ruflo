@@ -153,11 +153,11 @@ impl MemoryStore {
         let total: i64 = self
             .conn
             .query_row("SELECT COUNT(*) FROM entries", [], |r| r.get(0))?;
-        let namespaces: i64 = self
-            .conn
-            .query_row("SELECT COUNT(DISTINCT namespace) FROM entries", [], |r| {
-                r.get(0)
-            })?;
+        let namespaces: i64 =
+            self.conn
+                .query_row("SELECT COUNT(DISTINCT namespace) FROM entries", [], |r| {
+                    r.get(0)
+                })?;
         let with_embeddings: i64 = self.conn.query_row(
             "SELECT COUNT(*) FROM entries WHERE embedding IS NOT NULL",
             [],
@@ -178,12 +178,9 @@ impl MemoryStore {
             _ => None,
         };
 
-        let vector_hits = if matches!(req.mode, SearchMode::Vector | SearchMode::Hybrid)
-            && query_embedding.is_some()
-        {
-            self.vector_search(req, query_embedding.as_ref().unwrap())?
-        } else {
-            Vec::new()
+        let vector_hits = match (&query_embedding, req.mode) {
+            (Some(q), SearchMode::Vector | SearchMode::Hybrid) => self.vector_search(req, q)?,
+            _ => Vec::new(),
         };
 
         let lexical_hits = if matches!(req.mode, SearchMode::Lexical | SearchMode::Hybrid) {
@@ -224,9 +221,17 @@ impl MemoryStore {
                 continue;
             }
             let score = cosine(query, &vec);
-            hits.push(SearchHit { entry, score, source: "vector" });
+            hits.push(SearchHit {
+                entry,
+                score,
+                source: "vector",
+            });
         }
-        hits.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
+        hits.sort_by(|a, b| {
+            b.score
+                .partial_cmp(&a.score)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
         hits.truncate(req.limit * 4); // overfetch for fusion
         Ok(hits)
     }
@@ -253,7 +258,11 @@ impl MemoryStore {
             let entry = row_to_entry(row)?;
             // BM25 is lower-is-better; flip to similarity-ish in [0, 1].
             let score = 1.0 / (1.0 + (bm.max(0.0) as f32));
-            Ok(SearchHit { entry, score, source: "lexical" })
+            Ok(SearchHit {
+                entry,
+                score,
+                source: "lexical",
+            })
         })?;
 
         let mut out = Vec::new();
@@ -378,9 +387,16 @@ mod tests {
     #[test]
     fn upsert_overwrites() {
         let (_d, store) = open();
-        store.store(&req("ns", "k", serde_json::json!("first"))).unwrap();
-        store.store(&req("ns", "k", serde_json::json!("second"))).unwrap();
-        assert_eq!(store.get("ns", "k").unwrap().value, serde_json::json!("second"));
+        store
+            .store(&req("ns", "k", serde_json::json!("first")))
+            .unwrap();
+        store
+            .store(&req("ns", "k", serde_json::json!("second")))
+            .unwrap();
+        assert_eq!(
+            store.get("ns", "k").unwrap().value,
+            serde_json::json!("second")
+        );
         assert_eq!(store.stats().unwrap().total_entries, 1);
     }
 
@@ -396,7 +412,11 @@ mod tests {
     fn lexical_search_finds_text() {
         let (_d, store) = open();
         store
-            .store(&req("p", "a", serde_json::json!("we chose JWT for stateless auth")))
+            .store(&req(
+                "p",
+                "a",
+                serde_json::json!("we chose JWT for stateless auth"),
+            ))
             .unwrap();
         store
             .store(&req("p", "b", serde_json::json!("postgres tuning notes")))
@@ -419,19 +439,24 @@ mod tests {
     #[test]
     fn vector_search_uses_supplied_embedding() {
         let (_d, store) = open();
-        let mut a = StoreRequest::default();
-        a.namespace = "p".into();
-        a.key = "a".into();
-        a.value = serde_json::json!("apple");
-        a.embedding = Some(vec![1.0, 0.0, 0.0]);
-        store.store(&a).unwrap();
-
-        let mut b = StoreRequest::default();
-        b.namespace = "p".into();
-        b.key = "b".into();
-        b.value = serde_json::json!("banana");
-        b.embedding = Some(vec![0.0, 1.0, 0.0]);
-        store.store(&b).unwrap();
+        store
+            .store(&StoreRequest {
+                namespace: "p".into(),
+                key: "a".into(),
+                value: serde_json::json!("apple"),
+                embedding: Some(vec![1.0, 0.0, 0.0]),
+                ..Default::default()
+            })
+            .unwrap();
+        store
+            .store(&StoreRequest {
+                namespace: "p".into(),
+                key: "b".into(),
+                value: serde_json::json!("banana"),
+                embedding: Some(vec![0.0, 1.0, 0.0]),
+                ..Default::default()
+            })
+            .unwrap();
 
         let hits = store
             .search(&SearchRequest {
@@ -449,19 +474,24 @@ mod tests {
     #[test]
     fn tag_filter_excludes_unmatched() {
         let (_d, store) = open();
-        let mut a = StoreRequest::default();
-        a.namespace = "p".into();
-        a.key = "a".into();
-        a.value = serde_json::json!("decision about auth");
-        a.tags = vec!["architecture".into(), "security".into()];
-        store.store(&a).unwrap();
-
-        let mut b = StoreRequest::default();
-        b.namespace = "p".into();
-        b.key = "b".into();
-        b.value = serde_json::json!("decision about auth");
-        b.tags = vec!["architecture".into()];
-        store.store(&b).unwrap();
+        store
+            .store(&StoreRequest {
+                namespace: "p".into(),
+                key: "a".into(),
+                value: serde_json::json!("decision about auth"),
+                tags: vec!["architecture".into(), "security".into()],
+                ..Default::default()
+            })
+            .unwrap();
+        store
+            .store(&StoreRequest {
+                namespace: "p".into(),
+                key: "b".into(),
+                value: serde_json::json!("decision about auth"),
+                tags: vec!["architecture".into()],
+                ..Default::default()
+            })
+            .unwrap();
 
         let hits = store
             .search(&SearchRequest {
