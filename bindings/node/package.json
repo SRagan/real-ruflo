@@ -1,0 +1,45 @@
+{
+  "name": "@real-ruflo/node",
+  "version": "0.1.0",
+  "description": "Node bindings (NAPI-rs) + MCP server for Real Ruflo.",
+  "license": "MIT",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "bin": {
+    "real-ruflo-mcp": "./server/index.js"
+  },
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "server/",
+    "*.node"
+  ],
+  "scripts": {
+    "build": "napi build --platform --release",
+    "build:debug": "napi build --platform",
+    "start": "node server/index.js",
+    "test": "node --test"
+  },
+  "napi": {
+    "name": "real-ruflo",
+    "triples": {
+      "defaults": true,
+      "additional": [
+        "x86_64-pc-windows-msvc",
+        "x86_64-apple-darwin",
+        "aarch64-apple-darwin",
+        "x86_64-unknown-linux-gnu",
+        "aarch64-unknown-linux-gnu"
+      ]
+    }
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0"
+  },
+  "devDependencies": {
+    "@napi-rs/cli": "^2.18.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

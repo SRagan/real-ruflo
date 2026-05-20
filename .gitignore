@@ -1,0 +1,39 @@
+# Rust
+/target
+**/*.rs.bk
+Cargo.lock.bak
+
+# Node
+node_modules/
+dist/
+*.node
+*.tsbuildinfo
+.npm/
+npm-debug.log*
+
+# Local state
+.real-ruflo/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# Benchmark artifacts
+bench/results/
+*.bench.json
